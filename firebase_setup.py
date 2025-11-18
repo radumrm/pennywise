@@ -1,8 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-db = None
-
 def get_database():
 
     if not firebase_admin._apps:
@@ -10,4 +8,5 @@ def get_database():
         firebase_admin.initialize_app(cred)
 
     db = firestore.client()
+    return db
 
