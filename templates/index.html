@@ -53,7 +53,20 @@
                     </div>
                 </div>
             </li>
-
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTrans"
+                    aria-expanded="true" aria-controls="collapseTrans">
+                    <i class="fas fa-fw fa-exchange-alt"></i>
+                    <span>Transactions</span>
+                </a>
+                <div id="collapseTrans" class="collapse" aria-labelledby="headingTrans" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Actions:</h6>
+                        <a class="collapse-item" href="{{ url_for('add_transaction_route') }}">Add Transaction</a>
+                        <a class="collapse-item" href="{{ url_for('history_route') }}">Transaction History</a>
+                    </div>
+                </div>
+            </li>
             <hr class="sidebar-divider d-none d-md-block">
 
             <div class="text-center d-none d-md-inline">

@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from db_user import login, get_user_by_email, create_account
 from db_cards import create_card, get_user_cards, delete_card
+from db_transactions import add_transaction, get_user_transactions
 
 app = Flask(__name__)
 app.secret_key = "cheie_secreta_pennywise"
@@ -158,6 +159,41 @@ def delete_card_route(iban):
     else:
         flash("Error deleting card.", "danger")
     return redirect(url_for('view_cards_route'))
+
+@app.route('/transactions')
+@login_required
+def history_route():
+    transactions = get_user_transactions(current_user.id)
+    return render_template('history.html', name=current_user.name, transactions=transactions)
+
+@app.route('/add_transaction', methods=['GET', 'POST'])
+@login_required
+def add_transaction_route():
+    if request.method == 'POST':
+        amount = request.form.get('amount')
+        trans_type = request.form.get('type')
+        date = request.form.get('date')
+        card_iban = request.form.get('card_iban')
+        
+        if trans_type == "income":
+            category = request.form.get('category_income')
+        else:
+            category = request.form.get('category_expense')
+
+        if not category:
+            flash("Please select a category!", "danger")
+            return redirect(url_for('add_transaction_route'))
+
+        success = add_transaction(current_user.id, amount, trans_type, category, date, card_iban)
+        
+        if success:
+            flash("Transaction added and balance updated!", "success")
+            return redirect(url_for('history_route'))
+        else:
+            flash("Error adding transaction.", "danger")
+
+    user_cards = get_user_cards(current_user.id)
+    return render_template('add_transaction.html', name=current_user.name, cards=user_cards)
 
 @app.route('/logout')
 @login_required
