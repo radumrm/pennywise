@@ -3,7 +3,7 @@ from google.cloud import firestore
 
 db = get_database()
 
-def add_transaction(email, amount, trans_type, category, date, card_iban):
+def add_transaction(email, amount, trans_type, category, date, card_iban, description):
     transaction_ref = db.collection("transactions").document()
     transaction_ref.set({
         "user_email": email,
@@ -11,7 +11,8 @@ def add_transaction(email, amount, trans_type, category, date, card_iban):
         "type": trans_type,
         "category": category,
         "date": date,
-        "card_iban": card_iban
+        "card_iban": card_iban,
+        "description": description 
     })
 
     card_ref = db.collection("accounts").document(email).collection("cards").document(card_iban)
