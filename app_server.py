@@ -1,17 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from db_user import login, get_user_by_email, create_account # Importam functiile tale
-from db_cards import get_user_cards
+from db_user import login, get_user_by_email, create_account
+from db_cards import create_card, get_user_cards, delete_card
 
 app = Flask(__name__)
-app.secret_key = "cheie_secreta_pennywise" # Schimba asta cu ceva random
+app.secret_key = "cheie_secreta_pennywise"
 
-# --- CONFIGURARE FLASK-LOGIN ---
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login_route' # Daca nu e logat, il trimite aici
+login_manager.login_view = 'login_route'
 
-# Clasa User (Ambalajul)
 class User(UserMixin):
     def __init__(self, email, name):
         self.id = email
@@ -19,17 +17,35 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_email):
-    # Aceasta functie ruleaza la fiecare click pentru a mentine userul logat
     user_data = get_user_by_email(user_email)
     if user_data:
         return User(email=user_data['email'], name=user_data['name'])
     return None
 
-# --- RUTE ---
+def detect_bank_from_iban(iban):
+    clean_iban = iban.replace(" ", "").upper()
+    
+    if len(clean_iban) < 8:
+        return "Unknown Bank"
+
+    bank_code = clean_iban[4:8]
+
+    banks = {
+        "BTRL": "Banca Transilvania",
+        "RNCB": "BCR",
+        "RZBR": "Raiffeisen Bank",
+        "INGB": "ING Bank",
+        "REVO": "Revolut", 
+        "BRDE": "BRD",
+        "UGBI": "Garanti Bank",
+        "BACX": "UniCredit Bank",
+        "TREZ": "State Treasury"
+    }
+
+    return banks.get(bank_code, "Other Bank (" + bank_code + ")")
 
 @app.route('/')
 def home():
-    # Daca intra pe prima pagina si e logat, il ducem la dashboard
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login_route'))
@@ -43,7 +59,6 @@ def login_route():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        # Aici apelam functia ta din db_user.py
         user_data = login(email, password)
         
         if user_data:
@@ -51,7 +66,7 @@ def login_route():
             login_user(user_obj)
             return redirect(url_for('dashboard'))
         else:
-            flash("Email sau parolă incorectă!", "danger") # Mesaj de eroare
+            flash("Incorrect Email or Password!", "danger")
             
     return render_template('login.html')
 
@@ -70,25 +85,79 @@ def register_route():
         name = f"{first_name} {last_name}"
 
         if password != repeat_password:
-            flash("Passwords don't match!", "danger")
+            flash("Passwords do not match!", "danger")
             return redirect(url_for('register_route'))
         
         success = create_account(email, name, password)
         
         if success:
-            flash("Account created successfully! You can log in now.", "success")
+            flash("Account created successfully! Please login.", "success")
             return redirect(url_for('login_route'))
         else:
-            flash("Error creating account. The email may already exist.", "danger")
+            flash("Error creating account. Email might already exist.", "danger")
             
     return render_template('register.html')
 
 @app.route('/dashboard')
-@login_required # <--- Protejeaza pagina
+@login_required
 def dashboard():
     user_cards = get_user_cards(current_user.id)
-
     return render_template('index.html', name=current_user.name, cards=user_cards)
+
+@app.route('/cards')
+@login_required
+def view_cards_route():
+    user_cards = get_user_cards(current_user.id)
+    return render_template('cards.html', name=current_user.name, cards=user_cards)
+
+@app.route('/add_card', methods=['GET', 'POST'])
+@login_required
+def add_card_route():
+    if request.method == 'POST':
+        iban = request.form.get('iban').strip().upper()
+        
+        if len(iban) != 24:
+            flash("Invalid IBAN! It must be exactly 24 characters.", "danger")
+            return render_template('add_card.html')
+
+        bank = detect_bank_from_iban(iban)
+        
+        card_name = request.form.get('card_name')
+        card_number = request.form.get('card_number').replace(" ", "")
+        expiration_date = request.form.get('expiration_date')
+        
+        if len(card_number) != 16 or not card_number.isdigit():
+             flash("Invalid Card Number! It must be 16 digits.", "danger")
+             return render_template('add_card.html')
+
+        holder = request.form.get('card_holder_name')
+        try:
+            initial_sum = float(request.form.get('initial_sum'))
+        except ValueError:
+            flash("Invalid amount entered!", "danger")
+            return render_template('add_card.html')
+            
+        pin = request.form.get('pin')
+
+        success = create_card(current_user.id, iban, bank, holder, initial_sum, pin, card_name, card_number, expiration_date)
+
+        if success:
+            flash(f"{card_name} added successfully!", "success")
+            return redirect(url_for('view_cards_route')) 
+        else:
+            flash("Error: This IBAN already exists!", "danger")
+
+    return render_template('add_card.html')
+
+@app.route('/delete_card/<string:iban>')
+@login_required
+def delete_card_route(iban):
+    success = delete_card(current_user.id, iban)
+    if success:
+        flash(f"Card {iban} deleted successfully.", "success")
+    else:
+        flash("Error deleting card.", "danger")
+    return redirect(url_for('view_cards_route'))
 
 @app.route('/logout')
 @login_required
@@ -98,4 +167,3 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
-    
