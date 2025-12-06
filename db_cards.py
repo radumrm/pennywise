@@ -1,73 +1,52 @@
 from firebase_setup import get_database
-from google.cloud.firestore_v1 import ArrayUnion
-from db_user import hash
+import hashlib
 
 db = get_database()
 
-# create a card for a user
-def create_card(email, title, bank):
-    user_doc = db.collection("accounts").document(email)
-    if not user_doc.get().exists:
-        print("Account doesn't exist")
-        return None
+def hash_pin(pin):
+    return hashlib.sha256(pin.encode('utf-8')).hexdigest()
 
-    card_ref = user_doc.collection("cards").document()
-    card_id = card_ref.id
+def create_card(email, IBAN, bank, card_holder_name, initial_sum, PIN, card_name, card_number, expiration_date):
+    card_ref = db.collection("accounts").document(email).collection("cards").document(IBAN)
+
+    if card_ref.get().exists:
+        print("Card already exists for this user")
+        return False
     
     card_ref.set({
-        "id": card_id,
-        "title": title,
-        "bank": bank,
+        "IBAN" : IBAN,
+        "bank" : bank,
+        "card_holder_name" : card_holder_name,
+        "sum" : initial_sum,
+        "PIN" : hash_pin(PIN),
+        "card_name": card_name,
+        "card_number": card_number,
+        "expiration_date": expiration_date
     })
-    return card_id
-
-
-# list all cards for a user (returns list of dicts)
-def get_cards(email):
-    user_doc = db.collection("accounts").document(email)
-    if not user_doc.get().exists:
-        print("Account doesn't exist")
-        return None
-
-    cards_col = user_doc.collection("cards").stream()
-    cards = [c.to_dict() for c in cards_col]
-    return cards
-
-
-# get one card by id
-def get_card(email, card_id):
-    card_doc = db.collection("accounts").document(email).collection("cards").document(card_id).get()
-    if not card_doc.exists:
-        print("Card not found")
-        return None
-    return card_doc.to_dict()
-
-
-# update card fields (title/bank)
-def update_card(email, card_id, title=None, bank=None):
-    card_ref = db.collection("accounts").document(email).collection("cards").document(card_id)
-    if not card_ref.get().exists:
-        print("Card not found")
-        return False
-
-    update_data = {}
-    if title is not None:
-        update_data["title"] = title
-    if bank is not None:  # Changed from 'content' to 'bank'
-        update_data["bank"] = bank
-
-    if not update_data:
-        return False
-
-    card_ref.update(update_data)
     return True
 
+def get_user_cards(email):
+    cards_ref = db.collection("accounts").document(email).collection("cards")
+    docs = cards_ref.stream()
+    
+    cards_list = []
+    for doc in docs:
+        cards_list.append(doc.to_dict())
+        
+    return cards_list
 
-# delete a single card
-def delete_card(email, card_id):
-    card_ref = db.collection("accounts").document(email).collection("cards").document(card_id)
-    if not card_ref.get().exists:
-        print("Card not found")
-        return False
-    card_ref.delete()
-    return True
+def delete_card(email, IBAN):
+    card_ref = db.collection("accounts").document(email).collection("cards").document(IBAN)
+    
+    if card_ref.get().exists:
+        card_ref.delete()
+        return True
+    return False
+
+def get_card_details(email, IBAN):
+    card_ref = db.collection("accounts").document(email).collection("cards").document(IBAN)
+    doc = card_ref.get()
+    
+    if doc.exists:
+        return doc.to_dict()
+    return None

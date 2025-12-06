@@ -105,3 +105,12 @@ def change_email(email, password, new_email):
     return create_account(new_email, name, password)
     
 
+# Pentru flask
+def get_user_by_email(email):
+    # Cautam direct documentul cu ID-ul email
+    doc_snapshot = db.collection("accounts").document(email).get()
+    
+    if not doc_snapshot.exists:
+        return None
+        
+    return doc_snapshot.to_dict()
