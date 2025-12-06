@@ -1,8 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from datetime import date
+
 from db_user import login, get_user_by_email, create_account
 from db_cards import create_card, get_user_cards, delete_card
 from db_transactions import add_transaction, get_user_transactions
+from db_reports import get_chart_data, get_category_spending
 
 app = Flask(__name__)
 app.secret_key = "cheie_secreta_pennywise"
@@ -25,24 +28,14 @@ def load_user(user_email):
 
 def detect_bank_from_iban(iban):
     clean_iban = iban.replace(" ", "").upper()
-    
     if len(clean_iban) < 8:
         return "Unknown Bank"
-
     bank_code = clean_iban[4:8]
-
     banks = {
-        "BTRL": "Banca Transilvania",
-        "RNCB": "BCR",
-        "RZBR": "Raiffeisen Bank",
-        "INGB": "ING Bank",
-        "REVO": "Revolut", 
-        "BRDE": "BRD",
-        "UGBI": "Garanti Bank",
-        "BACX": "UniCredit Bank",
-        "TREZ": "State Treasury"
+        "BTRL": "Banca Transilvania", "RNCB": "BCR", "RZBR": "Raiffeisen Bank",
+        "INGB": "ING Bank", "BREL": "Revolut", "REVO": "BRD",
+        "UGBI": "Garanti Bank", "BACX": "UniCredit Bank", "TREZ": "State Treasury"
     }
-
     return banks.get(bank_code, "Other Bank (" + bank_code + ")")
 
 @app.route('/')
@@ -55,55 +48,70 @@ def home():
 def login_route():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        
         user_data = login(email, password)
-        
         if user_data:
             user_obj = User(email=user_data['email'], name=user_data['name'])
             login_user(user_obj)
             return redirect(url_for('dashboard'))
         else:
             flash("Incorrect Email or Password!", "danger")
-            
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register_route():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-
     if request.method == 'POST':
         first_name = request.form.get('firstName')
         last_name = request.form.get('lastName')
         email = request.form.get('email')
         password = request.form.get('password')
         repeat_password = request.form.get('repeatPassword')
-        
         name = f"{first_name} {last_name}"
-
         if password != repeat_password:
             flash("Passwords do not match!", "danger")
             return redirect(url_for('register_route'))
-        
         success = create_account(email, name, password)
-        
         if success:
             flash("Account created successfully! Please login.", "success")
             return redirect(url_for('login_route'))
         else:
             flash("Error creating account. Email might already exist.", "danger")
-            
     return render_template('register.html')
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    user_cards = get_user_cards(current_user.id)
-    return render_template('index.html', name=current_user.name, cards=user_cards)
+    try:
+        user_cards = get_user_cards(current_user.id)
+    except:
+        user_cards = []
+    
+    days_range = request.args.get('range', '30')
+    try:
+        days_range = int(days_range)
+    except ValueError:
+        days_range = 30
+        
+    try:
+        chart_labels, chart_values = get_chart_data(current_user.id, days_range)
+        cat_labels, cat_values = get_category_spending(current_user.id)
+    except Exception as e:
+        print(f"EROARE GRAFICE: {e}") 
+        chart_labels, chart_values = [], []
+        cat_labels, cat_values = [], []
+    
+    return render_template('index.html', 
+                           name=current_user.name, 
+                           cards=user_cards,
+                           chart_labels=chart_labels,
+                           chart_values=chart_values,
+                           cat_labels=cat_labels,
+                           cat_values=cat_values,
+                           current_range=days_range)
 
 @app.route('/cards')
 @login_required
@@ -116,13 +124,11 @@ def view_cards_route():
 def add_card_route():
     if request.method == 'POST':
         iban = request.form.get('iban').strip().upper()
-        
         if len(iban) != 24:
             flash("Invalid IBAN! It must be exactly 24 characters.", "danger")
             return render_template('add_card.html')
-
-        bank = detect_bank_from_iban(iban)
         
+        bank = detect_bank_from_iban(iban)
         card_name = request.form.get('card_name')
         card_number = request.form.get('card_number').replace(" ", "")
         expiration_date = request.form.get('expiration_date')
@@ -139,7 +145,6 @@ def add_card_route():
             return render_template('add_card.html')
             
         pin = request.form.get('pin')
-
         success = create_card(current_user.id, iban, bank, holder, initial_sum, pin, card_name, card_number, expiration_date)
 
         if success:
@@ -172,8 +177,9 @@ def add_transaction_route():
     if request.method == 'POST':
         amount = request.form.get('amount')
         trans_type = request.form.get('type')
-        date = request.form.get('date')
+        date_val = request.form.get('date')
         card_iban = request.form.get('card_iban')
+        description = request.form.get('description')
         
         if trans_type == "income":
             category = request.form.get('category_income')
@@ -184,7 +190,7 @@ def add_transaction_route():
             flash("Please select a category!", "danger")
             return redirect(url_for('add_transaction_route'))
 
-        success = add_transaction(current_user.id, amount, trans_type, category, date, card_iban)
+        success = add_transaction(current_user.id, amount, trans_type, category, date_val, card_iban, description)
         
         if success:
             flash("Transaction added and balance updated!", "success")
@@ -193,7 +199,7 @@ def add_transaction_route():
             flash("Error adding transaction.", "danger")
 
     user_cards = get_user_cards(current_user.id)
-    return render_template('add_transaction.html', name=current_user.name, cards=user_cards)
+    return render_template('add_transaction.html', name=current_user.name, cards=user_cards, today=date.today())
 
 @app.route('/logout')
 @login_required
