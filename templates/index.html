@@ -204,8 +204,11 @@
                                     <h6 class="m-0 font-weight-bold text-primary">Categories</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div class="chart-pie pt-4 pb-2">
+                                    <div class="chart-pie pt-4 pb-2" style="position: relative;">
                                         <canvas id="myPieChart"></canvas>
+                                        <div id="pieChartCenter" style="position: absolute; top: 43%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
+                                            <div style="font-size: 1.5rem; font-weight: bold; color: #5a5c69;" id="pieChartTotal">0 RON</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -219,7 +222,7 @@
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; PennyWise 2024</span>
+                        <span>Copyright &copy; PennyWise 2025</span>
                     </div>
                 </div>
             </footer>
@@ -358,36 +361,74 @@
 
         // --- 2. PIE CHART (Categorii Dinamice) ---
         var ctxPie = document.getElementById("myPieChart");
-        var myPieChart = new Chart(ctxPie, {
-          type: 'doughnut',
-          data: {
-            labels: {{ cat_labels | safe }},
-            datasets: [{
-              data: {{ cat_values | tojson }},
-              backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'],
-              hoverBackgroundColor: ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f'],
-              hoverBorderColor: "rgba(234, 236, 244, 1)",
-            }],
-          },
-          options: {
-            maintainAspectRatio: false,
-            tooltips: {
-              backgroundColor: "rgb(255,255,255)",
-              bodyFontColor: "#858796",
-              borderColor: '#dddfeb',
-              borderWidth: 1,
-              xPadding: 15,
-              yPadding: 15,
-              displayColors: false,
-              caretPadding: 10,
+        var catLabels = {{ cat_labels | tojson }};
+        var catValues = {{ cat_values | tojson }};
+        var pieChartTotalElement = document.getElementById("pieChartTotal");
+        
+        // Verificare daca exista date
+        if (catLabels.length === 0 || catValues.length === 0) {
+          // Daca nu exista date, afisam un mesaj
+          ctxPie.parentElement.innerHTML = '<div class="text-center py-5"><i class="fas fa-chart-pie fa-3x text-gray-300 mb-3"></i><p class="text-gray-500">No expense transactions found.<br>Add transactions to see category breakdown.</p></div>';
+        } else {
+          // Calculare suma totala
+          var totalAmount = catValues.reduce(function(a, b) { return a + b; }, 0);
+          
+          // Actualizare text in centru cu suma totala
+          if (pieChartTotalElement) {
+            pieChartTotalElement.textContent = number_format(totalAmount) + ' RON';
+          }
+          
+          // Generare culori dinamice pentru categorii
+          var baseColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#e83e8c', '#fd7e14', '#20c997'];
+          var baseHoverColors = ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f', '#3a3b45', '#d91a72', '#dc6502', '#1aa179'];
+          
+          var backgroundColor = [];
+          var hoverBackgroundColor = [];
+          for (var i = 0; i < catLabels.length; i++) {
+            backgroundColor.push(baseColors[i % baseColors.length]);
+            hoverBackgroundColor.push(baseHoverColors[i % baseHoverColors.length]);
+          }
+          
+          var myPieChart = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+              labels: catLabels,
+              datasets: [{
+                data: catValues,
+                backgroundColor: backgroundColor,
+                hoverBackgroundColor: hoverBackgroundColor,
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+              }],
             },
-            legend: {
-              display: true,
-              position: 'bottom' 
+            options: {
+              maintainAspectRatio: false,
+              tooltips: {
+                backgroundColor: "rgb(255,255,255)",
+                bodyFontColor: "#858796",
+                borderColor: '#dddfeb',
+                borderWidth: 1,
+                xPadding: 15,
+                yPadding: 15,
+                displayColors: true,
+                caretPadding: 10,
+                callbacks: {
+                  label: function(tooltipItem, data) {
+                    var label = data.labels[tooltipItem.index] || '';
+                    var value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+                    var total = data.datasets[tooltipItem.datasetIndex].data.reduce(function(a, b) { return a + b; }, 0);
+                    var percentage = ((value / total) * 100).toFixed(1);
+                    return label + ': ' + number_format(value) + ' RON (' + percentage + '%)';
+                  }
+                }
+              },
+              legend: {
+                display: true,
+                position: 'bottom' 
+              },
+              cutoutPercentage: 80,
             },
-            cutoutPercentage: 80,
-          },
-        });
+          });
+        }
     </script>
 
 </body>
