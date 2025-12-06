@@ -68,5 +68,15 @@ def get_category_spending(email):
         category = data.get("category", "Other")
         amount = float(data.get("amount", 0.0))
         categories[category] = categories.get(category, 0) + amount
+    
+    # Sortare descrescatoare dupa valoare pentru o afisare mai buna
+    sorted_categories = sorted(categories.items(), key=lambda x: x[1], reverse=True)
+    
+    if not sorted_categories:
+        # Daca nu exista tranzactii, returnam liste goale
+        return [], []
+    
+    labels = [cat[0] for cat in sorted_categories]
+    values = [cat[1] for cat in sorted_categories]
             
-    return list(categories.keys()), list(categories.values())
+    return labels, values
