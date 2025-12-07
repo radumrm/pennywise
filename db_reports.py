@@ -3,19 +3,23 @@ from datetime import datetime, timedelta
 
 db = get_database()
 
-def get_chart_data(email, days_range):
+def get_chart_data(email, days_range, card_filter = None):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days_range)
     
     transactions_ref = db.collection("transactions")
     start_str = start_date.strftime("%Y-%m-%d")
     
-    query = transactions_ref.where("user_email", "==", email).where("type", "==", "expense").where("date", ">=", start_str)
+    query = transactions_ref.where("user_email", "==", email).where("type", "==", "expense")
+    
+    if card_filter and card_filter != 'all':
+        query = query.where("card_iban", "==", card_filter)
+
+    query = query.where("date", ">=", start_str)
                             
     results = query.stream()
     
     data_map = {}
-    
     group_by_month = (days_range > 90)
 
     for doc in results:
@@ -57,9 +61,14 @@ def get_chart_data(email, days_range):
 
     return labels, values
 
-def get_category_spending(email):
+def get_category_spending(email, card_filter=None):
     transactions_ref = db.collection("transactions")
+    
     query = transactions_ref.where("user_email", "==", email).where("type", "==", "expense")
+
+    if card_filter and card_filter != 'all':
+        query = query.where("card_iban", "==", card_filter)
+
     results = query.stream()
     
     categories = {}
@@ -69,11 +78,9 @@ def get_category_spending(email):
         amount = float(data.get("amount", 0.0))
         categories[category] = categories.get(category, 0) + amount
     
-    # Sortare descrescatoare dupa valoare pentru o afisare mai buna
     sorted_categories = sorted(categories.items(), key=lambda x: x[1], reverse=True)
     
     if not sorted_categories:
-        # Daca nu exista tranzactii, returnam liste goale
         return [], []
     
     labels = [cat[0] for cat in sorted_categories]

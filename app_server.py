@@ -33,7 +33,7 @@ def detect_bank_from_iban(iban):
     bank_code = clean_iban[4:8]
     banks = {
         "BTRL": "Banca Transilvania", "RNCB": "BCR", "RZBR": "Raiffeisen Bank",
-        "INGB": "ING Bank", "BREL": "Revolut", "REVO": "BRD",
+        "INGB": "ING Bank", "REVO": "Revolut", "BRDE": "BRD",
         "UGBI": "Garanti Bank", "BACX": "UniCredit Bank", "TREZ": "State Treasury"
     }
     return banks.get(bank_code, "Other Bank (" + bank_code + ")")
@@ -90,19 +90,22 @@ def dashboard():
     except:
         user_cards = []
     
+    # Existing range filter
     days_range = request.args.get('range', '30')
     try:
         days_range = int(days_range)
     except ValueError:
         days_range = 30
         
+    # NEW: Get the card filter from URL, default to 'all'
+    selected_card = request.args.get('card', 'all')
+        
     try:
-        chart_labels, chart_values = get_chart_data(current_user.id, days_range)
-        cat_labels, cat_values = get_category_spending(current_user.id)
+        # Pass selected_card to the database functions
+        chart_labels, chart_values = get_chart_data(current_user.id, days_range, selected_card)
+        cat_labels, cat_values = get_category_spending(current_user.id, selected_card)
     except Exception as e:
-        print(f"EROARE GRAFICE: {e}") 
-        chart_labels, chart_values = [], []
-        cat_labels, cat_values = [], []
+        raise e
     
     return render_template('index.html', 
                            name=current_user.name, 
@@ -111,7 +114,8 @@ def dashboard():
                            chart_values=chart_values,
                            cat_labels=cat_labels,
                            cat_values=cat_values,
-                           current_range=days_range)
+                           current_range=days_range,
+                           selected_card=selected_card) # Pass this to template to show active state
 
 @app.route('/cards')
 @login_required
