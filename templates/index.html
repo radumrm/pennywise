@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>PennyWise - Dashboard</title>
-
+    
     <link href="{{ url_for('static', filename='vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/sb-admin-2.min.css') }}" rel="stylesheet">
@@ -76,7 +76,6 @@
             </div>
 
         </ul>
-
         <div id="content-wrapper" class="d-flex flex-column">
 
             <div id="content">
@@ -104,7 +103,6 @@
                         </li>
                     </ul>
                 </nav>
-
                 <div class="container-fluid">
 
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -170,11 +168,43 @@
                         {% endfor %}
                     </div>
 
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card shadow-sm border-left-primary py-2">
+                                <div class="card-body py-2 d-flex align-items-center">
+                                    <form action="{{ url_for('dashboard') }}" method="get" class="form-inline w-100">
+                                        
+                                        <input type="hidden" name="range" value="{{ current_range }}">
+                                        
+                                        <label class="font-weight-bold text-primary mr-3" for="cardSelect">
+                                            <i class="fas fa-filter mr-1"></i> Filter Expenses:
+                                        </label>
+                                        
+                                        <select name="card" id="cardSelect" class="form-control border-0 bg-light" onchange="this.form.submit()" style="font-weight: 600;">
+                                            <option value="all" {% if selected_card == 'all' %}selected{% endif %}>
+                                                All Cards
+                                            </option>
+                                            {% for card in cards %}
+                                                <option value="{{ card.IBAN }}" {% if selected_card == card.IBAN %}selected{% endif %}>
+                                                    {{ card.bank }} - {{ card.card_name }} (...{{ card.card_number[-4:] }})
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-xl-8 col-lg-7">
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Expenses Overview</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary">
+                                        Expenses Overview
+                                        {% if selected_card != 'all' %}
+                                            <span class="badge badge-primary ml-2" style="font-size: 0.8em;">Filtered</span>
+                                        {% endif %}
+                                    </h6>
                                     <div class="dropdown no-arrow">
                                         <a class="dropdown-toggle btn btn-sm btn-outline-primary" href="#" role="button" id="dropdownMenuLink"
                                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -184,9 +214,9 @@
                                         <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
                                             aria-labelledby="dropdownMenuLink">
                                             <div class="dropdown-header">Select Time Range:</div>
-                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=30) }}">Last 30 Days</a>
-                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=90) }}">Last 90 Days</a>
-                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=365) }}">This Year (Monthly)</a>
+                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=30, card=selected_card) }}">Last 30 Days</a>
+                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=90, card=selected_card) }}">Last 90 Days</a>
+                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=365, card=selected_card) }}">This Year (Monthly)</a>
                                         </div>
                                     </div>
                                 </div>
@@ -216,9 +246,7 @@
                     </div>
 
                 </div>
-
-            </div>
-
+                </div>
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
@@ -261,11 +289,9 @@
     <script src="{{ url_for('static', filename='vendor/chart.js/Chart.min.js') }}"></script>
     
     <script>
-        // Setari Generale Chart.js
         Chart.defaults.global.defaultFontFamily = 'Nunito', '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
         Chart.defaults.global.defaultFontColor = '#858796';
 
-        // Functie formatare bani (1000 -> 1,000)
         function number_format(number, decimals, dec_point, thousands_sep) {
           number = (number + '').replace(',', '').replace(' ', '');
           var n = !isFinite(+number) ? 0 : +number,
@@ -288,12 +314,10 @@
           return s.join(dec);
         }
 
-        // --- 1. AREA CHART (Dinamic din baza de date) ---
         var ctx = document.getElementById("myAreaChart");
         var myLineChart = new Chart(ctx, {
           type: 'line',
           data: {
-            // Aici vin etichetele (zilele sau lunile) din Python
             labels: {{ chart_labels | tojson }},
             datasets: [{
               label: "Spending",
@@ -308,7 +332,6 @@
               pointHoverBorderColor: "rgba(78, 115, 223, 1)",
               pointHitRadius: 10,
               pointBorderWidth: 2,
-              // Aici vin valorile (banii) din Python
               data: {{ chart_values | tojson }}, 
             }],
           },
@@ -359,26 +382,20 @@
           }
         });
 
-        // --- 2. PIE CHART (Categorii Dinamice) ---
         var ctxPie = document.getElementById("myPieChart");
         var catLabels = {{ cat_labels | tojson }};
         var catValues = {{ cat_values | tojson }};
         var pieChartTotalElement = document.getElementById("pieChartTotal");
         
-        // Verificare daca exista date
         if (catLabels.length === 0 || catValues.length === 0) {
-          // Daca nu exista date, afisam un mesaj
           ctxPie.parentElement.innerHTML = '<div class="text-center py-5"><i class="fas fa-chart-pie fa-3x text-gray-300 mb-3"></i><p class="text-gray-500">No expense transactions found.<br>Add transactions to see category breakdown.</p></div>';
         } else {
-          // Calculare suma totala
           var totalAmount = catValues.reduce(function(a, b) { return a + b; }, 0);
           
-          // Actualizare text in centru cu suma totala
           if (pieChartTotalElement) {
             pieChartTotalElement.textContent = number_format(totalAmount) + ' RON';
           }
           
-          // Generare culori dinamice pentru categorii
           var baseColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#e83e8c', '#fd7e14', '#20c997'];
           var baseHoverColors = ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f', '#3a3b45', '#d91a72', '#dc6502', '#1aa179'];
           
