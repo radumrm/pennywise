@@ -38,7 +38,7 @@ PennyWise is a modern and intuitive web application for managing and tracking pe
 ## Link Github and Youtube Demo
 
 - **GitHub** - https://github.com/radumrm/pennywise
-- **YouTube** -
+- **YouTube** - https://youtu.be/B-MIYFKmTgE
 
 
 ## Technologies Used
