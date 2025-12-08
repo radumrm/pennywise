@@ -1,3 +1,8 @@
+## Team
+- Marincea Radu
+- Albuica Octavian
+- Traistaru Dragos
+
 # PennyWise
 
 PennyWise is a modern and intuitive web application for managing and tracking personal financial transactions. The application allows users to monitor expenses and income, manage multiple bank cards, and analyze financial patterns through interactive charts and detailed reports.
@@ -29,7 +34,12 @@ PennyWise is a modern and intuitive web application for managing and tracking pe
 - **Card filtering** or aggregated view
 - **Detailed reports** by expense categories
 
----
+
+## Link Github and Youtube Demo
+
+- **GitHub** - https://github.com/radumrm/pennywise
+- **YouTube** -
+
 
 ## Technologies Used
 
@@ -127,7 +137,7 @@ pennywise/
    - **Expiration Date** (MM/YY)
    - **Card Holder Name**
    - **Initial Sum** (current available balance)
-   - **PIN** (optional, for reference)
+   - **CVV**
 3. Click "Add Card"
 4. The card will be added and appear in the card list
 
@@ -175,3 +185,29 @@ pennywise/
 
 1. Click on your name or the logout button
 2. You will be logged out and redirected to the login page
+
+## Team Contributions
+
+### Radu – Card & Transaction System & Backend
+- Implementation of card creation, validation and management system (IBAN, card number, bank detection).
+- Creation and display of cards with balance and bank information.
+- Development of transaction addition and classification system (Income/Expense).
+- Automatic balance update and transaction filtering by card, type and time range.
+
+### Octavian – Database
+- Complete Firebase Firestore database configuration.
+- Implementation of read/write operations for users, cards and transactions.
+- Authentication, user management and collection structure.
+- Creation of data extraction functions for charts and reports (aggregations, filters, time periods).
+
+### Dragos – Charts, Frontend Integration & Documentation
+- Implementation of charts (line chart + pie chart) for expenses and income using Chart.js.
+- Dynamic filtering by card, category and time range.
+- Integration of charts in frontend with real-time updates.
+- Created the README, documentation and demonstration video.
+
+## Difficulties
+
+- Keeping data consistent across multiple database collections (users, cards, transactions). **Solution:** Used safe transaction operations and error handling to maintain proper connections between related data.
+- Designing an optimized Firestore schema that supports advanced filtering and aggregation queries. **Solution:** Structured collections each account has a subcollection of cards and each transactions has unique card id.
+- Enabling secure database access for all team members during collaborative development. **Solution:** Shared Firebase service account credentials through a JSON configuration file that all team members can use to authenticate and access the same Firestore database instance.
