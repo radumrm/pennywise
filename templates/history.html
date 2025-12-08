@@ -79,6 +79,7 @@
                                             <th>Category</th>
                                             <th>Type</th>
                                             <th>Amount</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -97,9 +98,17 @@
                                             <td class="{{ 'text-success' if t.type == 'income' else 'text-danger' }}">
                                                 {{ '+' if t.type == 'income' else '-' }} {{ t.amount }} RON
                                             </td>
+                                            <td class="text-center">
+                                                <a href="{{ url_for('delete_transaction_route', trans_id=t.id) }}" 
+                                                   class="btn btn-danger btn-circle btn-sm" 
+                                                   onclick="return confirm('Are you sure? This will reverse the balance on your card.');"
+                                                   title="Delete Transaction">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </td>
                                         </tr>
                                         {% else %}
-                                        <tr><td colspan="5" class="text-center">No transactions found.</td></tr>
+                                        <tr><td colspan="6" class="text-center">No transactions found.</td></tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>

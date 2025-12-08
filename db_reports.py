@@ -84,9 +84,14 @@ def get_chart_data(email, days_range, card_filter=None, trans_type='expense', se
 
     return labels, values
 
-def get_category_spending(email, card_filter=None, trans_type='expense', selected_categories=None):
+def get_category_spending(email, days_range, card_filter=None, trans_type='expense', selected_categories=None):
     transactions_ref = db.collection("transactions")
     
+    # CALCULAM DATA DE START
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days_range)
+    start_str = start_date.strftime("%Y-%m-%d")
+
     query = transactions_ref.where("user_email", "==", email).where("type", "==", trans_type)
 
     if card_filter and card_filter != 'all':
@@ -94,6 +99,9 @@ def get_category_spending(email, card_filter=None, trans_type='expense', selecte
         
     if selected_categories:
         query = query.where("category", "in", selected_categories)
+        
+    # FILTRARE NOUA DUPA DATA
+    query = query.where("date", ">=", start_str)
 
     results = query.stream()
     

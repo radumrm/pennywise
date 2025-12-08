@@ -2,10 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import date
 
-# Importam functiile din modulele noastre de baza de date
 from db_user import login, get_user_by_email, create_account
 from db_cards import create_card, get_user_cards, delete_card
-from db_transactions import add_transaction, get_user_transactions
+from db_transactions import add_transaction, get_user_transactions, delete_transaction
 from db_reports import get_chart_data, get_category_spending
 
 app = Flask(__name__)
@@ -34,7 +33,8 @@ def detect_bank_from_iban(iban):
     bank_code = clean_iban[4:8]
     banks = {
         "BTRL": "Banca Transilvania", "RNCB": "BCR", "RZBR": "Raiffeisen Bank",
-        "INGB": "ING Bank", "REVO": "Revolut", "BRDE": "BRD"
+        "INGB": "ING Bank", "BREL": "Revolut (Libra)", "BRDE": "BRD",
+        "UGBI": "Garanti Bank", "BACX": "UniCredit Bank", "TREZ": "State Treasury"
     }
     return banks.get(bank_code, "Other Bank (" + bank_code + ")")
 
@@ -97,12 +97,12 @@ def dashboard():
         days_range = 15
         
     selected_card = request.args.get('card', 'all')
-
     trans_type = request.args.get('type', 'expense')
     
     try:
         chart_labels, chart_values = get_chart_data(current_user.id, days_range, selected_card, trans_type)
-        cat_labels, cat_values = get_category_spending(current_user.id, selected_card, trans_type)
+        # SCHIMBARE: transmitem days_range catre functia de categorii
+        cat_labels, cat_values = get_category_spending(current_user.id, days_range, selected_card, trans_type)
     except Exception as e:
         print(f"Error fetching dashboard data: {e}")
         chart_labels, chart_values = [], []
@@ -206,6 +206,18 @@ def add_transaction_route():
 
     user_cards = get_user_cards(current_user.id)
     return render_template('add_transaction.html', name=current_user.name, cards=user_cards, today=date.today())
+
+@app.route('/delete_transaction/<string:trans_id>')
+@login_required
+def delete_transaction_route(trans_id):
+    success = delete_transaction(current_user.id, trans_id)
+    
+    if success:
+        flash("Transaction deleted and balance reverted!", "success")
+    else:
+        flash("Error deleting transaction.", "danger")
+        
+    return redirect(url_for('history_route'))
 
 @app.route('/logout')
 @login_required
