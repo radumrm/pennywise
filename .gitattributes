@@ -1,2 +1,4 @@
-pennywise/static/** linguist-vendored
-pennywise/templates/** linguist-vendored
+static/** linguist-vendored
+templates/** linguist-vendored
+*.css linguist-vendored
+*.js linguist-vendored
