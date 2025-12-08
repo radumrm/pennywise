@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import date
 
+# Importam functiile din modulele noastre de baza de date
 from db_user import login, get_user_by_email, create_account
 from db_cards import create_card, get_user_cards, delete_card
 from db_transactions import add_transaction, get_user_transactions
@@ -33,8 +34,7 @@ def detect_bank_from_iban(iban):
     bank_code = clean_iban[4:8]
     banks = {
         "BTRL": "Banca Transilvania", "RNCB": "BCR", "RZBR": "Raiffeisen Bank",
-        "INGB": "ING Bank", "REVO": "Revolut", "BRDE": "BRD",
-        "UGBI": "Garanti Bank", "BACX": "UniCredit Bank", "TREZ": "State Treasury"
+        "INGB": "ING Bank", "REVO": "Revolut", "BRDE": "BRD"
     }
     return banks.get(bank_code, "Other Bank (" + bank_code + ")")
 
@@ -90,22 +90,23 @@ def dashboard():
     except:
         user_cards = []
     
-    # Existing range filter
-    days_range = request.args.get('range', '30')
+    days_range = request.args.get('range', '15')
     try:
         days_range = int(days_range)
     except ValueError:
-        days_range = 30
+        days_range = 15
         
-    # NEW: Get the card filter from URL, default to 'all'
     selected_card = request.args.get('card', 'all')
-        
+
+    trans_type = request.args.get('type', 'expense')
+    
     try:
-        # Pass selected_card to the database functions
-        chart_labels, chart_values = get_chart_data(current_user.id, days_range, selected_card)
-        cat_labels, cat_values = get_category_spending(current_user.id, selected_card)
+        chart_labels, chart_values = get_chart_data(current_user.id, days_range, selected_card, trans_type)
+        cat_labels, cat_values = get_category_spending(current_user.id, selected_card, trans_type)
     except Exception as e:
-        raise e
+        print(f"Error fetching dashboard data: {e}")
+        chart_labels, chart_values = [], []
+        cat_labels, cat_values = [], []
     
     return render_template('index.html', 
                            name=current_user.name, 
@@ -115,7 +116,8 @@ def dashboard():
                            cat_labels=cat_labels,
                            cat_values=cat_values,
                            current_range=days_range,
-                           selected_card=selected_card) # Pass this to template to show active state
+                           selected_card=selected_card,
+                           trans_type=trans_type)
 
 @app.route('/cards')
 @login_required

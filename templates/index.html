@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>PennyWise - Dashboard</title>
-    
+
     <link href="{{ url_for('static', filename='vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/sb-admin-2.min.css') }}" rel="stylesheet">
@@ -35,9 +35,7 @@
 
             <hr class="sidebar-divider">
 
-            <div class="sidebar-heading">
-                Interface
-            </div>
+            <div class="sidebar-heading">Interface</div>
 
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseTwo"
@@ -76,6 +74,7 @@
             </div>
 
         </ul>
+
         <div id="content-wrapper" class="d-flex flex-column">
 
             <div id="content">
@@ -103,6 +102,7 @@
                         </li>
                     </ul>
                 </nav>
+
                 <div class="container-fluid">
 
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -168,58 +168,63 @@
                         {% endfor %}
                     </div>
 
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card shadow-sm border-left-primary py-2">
-                                <div class="card-body py-2 d-flex align-items-center">
-                                    <form action="{{ url_for('dashboard') }}" method="get" class="form-inline w-100">
-                                        
-                                        <input type="hidden" name="range" value="{{ current_range }}">
-                                        
-                                        <label class="font-weight-bold text-primary mr-3" for="cardSelect">
-                                            <i class="fas fa-filter mr-1"></i> Filter Expenses:
-                                        </label>
-                                        
-                                        <select name="card" id="cardSelect" class="form-control border-0 bg-light" onchange="this.form.submit()" style="font-weight: 600;">
-                                            <option value="all" {% if selected_card == 'all' %}selected{% endif %}>
-                                                All Cards
-                                            </option>
+                    <div class="card shadow-sm border-bottom-primary mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter mr-1"></i> Dashboard Filters</h6>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ url_for('dashboard') }}" method="get">
+                                
+                                <div class="row align-items-center">
+                                    
+                                    <div class="col-md-3 mb-2">
+                                        <label class="small font-weight-bold text-gray-600">Time Range</label>
+                                        <select name="range" class="form-control form-control-sm" onchange="this.form.submit()">
+                                            <option value="15" {% if current_range == 15 %}selected{% endif %}>Last 15 Days</option>
+                                            <option value="90" {% if current_range == 90 %}selected{% endif %}>Last 90 Days</option>
+                                            <option value="365" {% if current_range == 365 %}selected{% endif %}>This Year</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3 mb-2">
+                                        <label class="small font-weight-bold text-gray-600">Card</label>
+                                        <select name="card" class="form-control form-control-sm" onchange="this.form.submit()">
+                                            <option value="all" {% if selected_card == 'all' %}selected{% endif %}>All Cards</option>
                                             {% for card in cards %}
                                                 <option value="{{ card.IBAN }}" {% if selected_card == card.IBAN %}selected{% endif %}>
-                                                    {{ card.bank }} - {{ card.card_name }} (...{{ card.card_number[-4:] }})
+                                                    {{ card.card_name }} (...{{ card.card_number[-4:] }})
                                                 </option>
                                             {% endfor %}
                                         </select>
-                                    </form>
+                                    </div>
+
+                                    <div class="col-md-3 mb-2">
+                                        <label class="small font-weight-bold text-gray-600">View Type</label>
+                                        <div class="btn-group w-100" role="group">
+                                            <a href="{{ url_for('dashboard', type='expense', range=current_range, card=selected_card) }}" 
+                                               class="btn btn-sm {% if trans_type == 'expense' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                                                Expenses
+                                            </a>
+                                            <a href="{{ url_for('dashboard', type='income', range=current_range, card=selected_card) }}" 
+                                               class="btn btn-sm {% if trans_type == 'income' %}btn-success{% else %}btn-outline-success{% endif %}">
+                                                Income
+                                            </a>
+                                        </div>
+                                    </div>
+
                                 </div>
-                            </div>
+                            </form>
                         </div>
                     </div>
+
                     <div class="row">
                         <div class="col-xl-8 col-lg-7">
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                                     <h6 class="m-0 font-weight-bold text-primary">
-                                        Expenses Overview
-                                        {% if selected_card != 'all' %}
-                                            <span class="badge badge-primary ml-2" style="font-size: 0.8em;">Filtered</span>
-                                        {% endif %}
+                                        {{ trans_type|capitalize }} Trend
                                     </h6>
-                                    <div class="dropdown no-arrow">
-                                        <a class="dropdown-toggle btn btn-sm btn-outline-primary" href="#" role="button" id="dropdownMenuLink"
-                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <i class="fas fa-calendar fa-sm fa-fw text-gray-400"></i> 
-                                            Filter: {{ current_range }} Days
-                                        </a>
-                                        <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in"
-                                            aria-labelledby="dropdownMenuLink">
-                                            <div class="dropdown-header">Select Time Range:</div>
-                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=30, card=selected_card) }}">Last 30 Days</a>
-                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=90, card=selected_card) }}">Last 90 Days</a>
-                                            <a class="dropdown-item" href="{{ url_for('dashboard', range=365, card=selected_card) }}">This Year (Monthly)</a>
-                                        </div>
                                     </div>
-                                </div>
                                 <div class="card-body">
                                     <div class="chart-area">
                                         <canvas id="myAreaChart"></canvas>
@@ -231,7 +236,9 @@
                         <div class="col-xl-4 col-lg-5">
                             <div class="card shadow mb-4">
                                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                                    <h6 class="m-0 font-weight-bold text-primary">Categories</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary">
+                                        {{ trans_type|capitalize }} Distribution
+                                    </h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="chart-pie pt-4 pb-2" style="position: relative;">
@@ -246,7 +253,9 @@
                     </div>
 
                 </div>
-                </div>
+
+            </div>
+
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
@@ -320,7 +329,7 @@
           data: {
             labels: {{ chart_labels | tojson }},
             datasets: [{
-              label: "Spending",
+              label: "{{ trans_type|capitalize }}",
               lineTension: 0.3,
               backgroundColor: "rgba(78, 115, 223, 0.05)",
               borderColor: "rgba(78, 115, 223, 1)",
@@ -388,7 +397,8 @@
         var pieChartTotalElement = document.getElementById("pieChartTotal");
         
         if (catLabels.length === 0 || catValues.length === 0) {
-          ctxPie.parentElement.innerHTML = '<div class="text-center py-5"><i class="fas fa-chart-pie fa-3x text-gray-300 mb-3"></i><p class="text-gray-500">No expense transactions found.<br>Add transactions to see category breakdown.</p></div>';
+          ctxPie.parentElement.innerHTML = '<div class="text-center py-5"><i class="fas fa-chart-pie fa-3x text-gray-300 mb-3"></i><p class="text-gray-500">No transactions found for this filter.</p></div>';
+          if (pieChartTotalElement) pieChartTotalElement.textContent = "0 RON";
         } else {
           var totalAmount = catValues.reduce(function(a, b) { return a + b; }, 0);
           
@@ -396,8 +406,9 @@
             pieChartTotalElement.textContent = number_format(totalAmount) + ' RON';
           }
           
-          var baseColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#e83e8c', '#fd7e14', '#20c997'];
-          var baseHoverColors = ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f', '#3a3b45', '#d91a72', '#dc6502', '#1aa179'];
+          // PALETA STANDARD (Red for expenses, blue/green/etc for others)
+          var baseColors = ['#e74a3b', '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#858796', '#5a5c69', '#e83e8c', '#fd7e14', '#20c997'];
+          var baseHoverColors = ['#be2617', '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#60616f', '#3a3b45', '#d91a72', '#dc6502', '#1aa179'];
           
           var backgroundColor = [];
           var hoverBackgroundColor = [];

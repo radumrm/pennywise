@@ -3,24 +3,29 @@ from datetime import datetime, timedelta
 
 db = get_database()
 
-def get_chart_data(email, days_range, card_filter = None):
+def get_chart_data(email, days_range, card_filter=None, trans_type='expense', selected_categories=None):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days_range)
     
     transactions_ref = db.collection("transactions")
     start_str = start_date.strftime("%Y-%m-%d")
     
-    query = transactions_ref.where("user_email", "==", email).where("type", "==", "expense")
+    query = transactions_ref.where("user_email", "==", email).where("type", "==", trans_type)
     
     if card_filter and card_filter != 'all':
         query = query.where("card_iban", "==", card_filter)
+
+    if selected_categories:
+        query = query.where("category", "in", selected_categories)
 
     query = query.where("date", ">=", start_str)
                             
     results = query.stream()
     
     data_map = {}
-    group_by_month = (days_range > 90)
+    
+    group_by_month = (days_range == 365)
+    group_by_week = (days_range == 90)
 
     for doc in results:
         data = doc.to_dict()
@@ -31,8 +36,12 @@ def get_chart_data(email, days_range, card_filter = None):
             dt = datetime.strptime(date_str, "%Y-%m-%d")
             
             if group_by_month:
-                key_idx = dt.month - 1
-                data_map[key_idx] = data_map.get(key_idx, 0) + amount
+                key = dt.month - 1
+                data_map[key] = data_map.get(key, 0) + amount
+            elif group_by_week:
+                start_of_week = dt - timedelta(days=dt.weekday())
+                week_key = start_of_week.strftime("%Y-%m-%d")
+                data_map[week_key] = data_map.get(week_key, 0) + amount
             else:
                 full_key = date_str
                 data_map[full_key] = data_map.get(full_key, 0) + amount
@@ -49,6 +58,20 @@ def get_chart_data(email, days_range, card_filter = None):
             labels.append(months[i])
             values.append(data_map.get(i, 0.0))
             
+    elif group_by_week:
+        current_pointer = start_date - timedelta(days=start_date.weekday())
+        
+        while current_pointer <= end_date + timedelta(days=6):
+            week_key = current_pointer.strftime("%Y-%m-%d")
+            
+            week_end = current_pointer + timedelta(days=6)
+            label_str = f"{current_pointer.strftime('%d %b')} - {week_end.strftime('%d %b')}"
+            
+            labels.append(label_str)
+            values.append(data_map.get(week_key, 0.0))
+            
+            current_pointer += timedelta(days=7)
+            
     else:
         delta = end_date - start_date
         for i in range(delta.days + 1):
@@ -61,13 +84,16 @@ def get_chart_data(email, days_range, card_filter = None):
 
     return labels, values
 
-def get_category_spending(email, card_filter=None):
+def get_category_spending(email, card_filter=None, trans_type='expense', selected_categories=None):
     transactions_ref = db.collection("transactions")
     
-    query = transactions_ref.where("user_email", "==", email).where("type", "==", "expense")
+    query = transactions_ref.where("user_email", "==", email).where("type", "==", trans_type)
 
     if card_filter and card_filter != 'all':
         query = query.where("card_iban", "==", card_filter)
+        
+    if selected_categories:
+        query = query.where("category", "in", selected_categories)
 
     results = query.stream()
     
